@@ -1,0 +1,8 @@
+{
+  "name": "REGISTREE - Corporate Services, AI & Business Setup",
+  "description": "Websites, AI automation and business registration in India, built for domestic and international clients.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

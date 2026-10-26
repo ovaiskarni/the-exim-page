@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>REGISTREE - Corporate Services, AI & Business Setup</title>
+    <meta name="description" content="Websites, AI automation and business registration in India, built for domestic and international clients." />
+    <link rel="canonical" href="https://theregistree.shop/" />
+    <meta property="og:title" content="REGISTREE - Corporate Services, AI & Business Setup" />
+    <meta property="og:description" content="Websites, AI automation and business registration in India, built for domestic and international clients." />
+    <meta property="og:url" content="https://theregistree.shop/" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:domain" content="theregistree.shop" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        try {
+          var h = window.location.hostname.toLowerCase();
+          var href = window.location.href.toLowerCase();
+          var isStaff = href.indexOf('admin') !== -1 || href.indexOf('staff') !== -1;
+          // Fast redirect to theregistree.shop if someone opens registree.ai.studio directly (except admin routes)
+          if (window.self === window.top && !isStaff) {
+            if (h.indexOf('registree.ai.studio') !== -1) {
+              window.location.replace('https://theregistree.shop' + window.location.pathname + window.location.search);
+            }
+          }
+        } catch(e) {}
+      })();
+    </script>
+  </head>
+  <body class="bg-white text-[#0a1128] antialiased selection:bg-[#0038ff] selection:text-white">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
