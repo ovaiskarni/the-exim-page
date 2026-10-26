@@ -437,6 +437,18 @@ app.post('/api/admin/login', (req: Request, res: Response) => {
   }
 });
 
+// Download full project source zip (for manual Vercel or GitHub sync)
+app.get('/api/download-zip', (_req: Request, res: Response) => {
+  const zipPath = path.resolve(process.cwd(), 'dist', 'registree-latest.zip');
+  if (fs.existsSync(zipPath)) {
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', 'attachment; filename="registree-latest.zip"');
+    res.sendFile(zipPath);
+  } else {
+    res.status(404).send('Zip archive not found.');
+  }
+});
+
 // Admin Lead List & Analytics
 app.get('/api/admin/leads', (_req: Request, res: Response) => {
   allLeads = loadLeads();
