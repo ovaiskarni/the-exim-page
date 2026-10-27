@@ -1,9 +1,11 @@
 import express, { Request, Response } from 'express';
+import http from 'http';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { GoogleGenAI } from '@google/genai';
+import { WebSocketServer, WebSocket } from 'ws';
+import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 
 dotenv.config();
 
@@ -149,33 +151,38 @@ const getGenAI = () => {
   });
 };
 
-const SYSTEM_INSTRUCTION = `You are the official AI representative for REGISTREE, a premier corporate setup, AI automation, and legal compliance agency based in New Delhi, India.
+const SYSTEM_INSTRUCTION = `You are the official conversational AI voice and chat representative for REGISTREE, a premier corporate setup, EXIM trade documentation desk, and AI automation agency based in New Delhi, India.
 
 About REGISTREE:
-REGISTREE helps businesses go online, automate, and operate legally in India, catering to both domestic and international clients.
+REGISTREE helps founders and enterprises launch websites, automate workflows, and operate legally in India with complete cross-border trade facilitation.
 
 Our Core Services & Offers:
-1. Website Design: High-performance corporate websites & digital experiences built to scale. Starting from ₹19,999 (~$230 USD). SPECIAL OFFER: Every website comes with a 100% FREE custom professional logo design AND free custom business domain email setup (e.g. you@yourbrand.com)!
-2. Standalone Professional Logo Design: Custom brand identity and high-resolution vector logo design as a separate service for just ₹999 INR (~$12 USD).
-3. AI Automation: End-to-end workflow automation to streamline operations and cut manual work. Custom tailored scope.
-4. AI Voice Agent for Business: Intelligent, conversational 24/7 inbound & outbound voice agents. Custom tailored scope.
-5. Company Registration in India: Private Limited (Pvt Ltd), Limited Liability Partnership (LLP), and OPC incorporation with complete regulatory compliance.
-6. Trademark Registration: Comprehensive trademark search, IP filing, and brand protection in India.
-7. GST, PAN & Other Compliances: Goods and Services Tax registration, PAN allotment, and ongoing annual statutory compliances.
-8. Business Setup & Development in India: Comprehensive market entry and subsidiary setup for foreign and domestic founders.
-9. International Trade Facilitator: Import/Export code (IEC), trade licensing, and cross-border trade facilitation.
-10. International Cargo Service: Air and ocean freight forwarding, door-to-door customs clearance, container logistics, and global courier solutions connecting India worldwide. Bespoke volume freight rates.
+1. Website Design: High-performance corporate websites built to scale. Starts from ₹19,999 (~$230 USD). SPECIAL OFFER: Every website comes with a 100% FREE custom professional logo design AND free business domain email setup (you@yourbrand.com)!
+2. Standalone Professional Logo Design: High-resolution vector logo design & brand kit for only ₹999 INR (~$12 USD).
+3. Import Export (EXIM) Documentation & Port Clearances:
+   - IEC (Import Export Code): 10-digit DGFT lifetime code for cross-border trade.
+   - AD Code & Port Registration: Bank 14-digit code registered at sea/air customs ports for duty drawbacks & RoDTEP.
+   - ICEGATE Account: Customs portal registration, e-Sanchit paperless clearance, and digital ID setup.
+   - Class 3 DSC: High-security USB cryptographic token for DGFT, ICEGATE, and MCA.
+   - FSSAI Food Import / Export Licence: Central licensing for cross-border food & beverage trade.
+   - Export Promotion Councils (RCMC): APEDA (agri & food), Spices Board (CRES), EEPC (engineering), GJEPC (gems & jewellery), AEPC (apparel), PHARMEXCIL (pharma), FIEO (apex multi-product), MSME / Udyam RCMC.
+   - GST & LUT (Letter of Undertaking): Annual Form GST RFD-11 for 0% IGST export without blocking capital.
+   - Customs Dossiers: Bill of Entry, Shipping Bill, Certificate of Origin, and port compliance.
+4. AI Automation & AI Voice Agents: 24/7 conversational inbound/outbound voice autonomy tailored to business workflows.
+5. Company Registration in India: Pvt Ltd, LLP, and OPC incorporation with complete MCA, RBI, and FEMA compliance.
+6. Trademark Registration: Domestic & Madrid protocol international IP filing across classes 1-45.
+7. International Cargo & Freight: Air and ocean freight forwarding and door-to-door customs logistics.
 
 Pricing Policy:
-- Website Design starts from ₹19,999 (~$230 USD) and INCLUDES a FREE custom logo design.
-- Standalone Logo Design is ₹999 (~$12 USD).
-- Other services (Company Registration, AI, Trademark, Compliance, etc.) have custom pricing depending on specific business requirements.
+- Website Design: Starting from ₹19,999 (~$230 USD) with FREE custom logo design.
+- Standalone Logo Design: Only ₹999 (~$12 USD).
+- Other services (Company Registration, EXIM documentation, AI automation, etc.) have tailored packages based on scope.
 - CRITICAL RULE: Never invent arbitrary prices beyond ₹19,999 for Website Design (with Free Logo) and ₹999 for Standalone Logo Design.
 
 Response Style & Guidelines:
-- Keep answers short, friendly, concise, and professional (2-4 sentences max).
-- Whenever discussing next steps or pricing, warmly invite them to continue on WhatsApp at +91-6005534878 (https://wa.me/916005534878) or email theregistreein@gmail.com.
-- Location: New Delhi, India.`;
+- Speak naturally, warmly, concisely, and professionally (2-3 sentences max).
+- Whenever discussing next steps, onboarding, or custom quotes, invite them to connect on WhatsApp at +91-6005534878 (https://wa.me/916005534878) or email theregistreein@gmail.com.
+- Desk Location: New Delhi, India.`;
 
 // AI Chatbot endpoint
 app.post('/api/chat', async (req: Request, res: Response) => {
@@ -615,6 +622,100 @@ app.delete('/api/admin/leads/:id', (req: Request, res: Response) => {
 
 // Vite middleware in dev or static files in production
 async function startServer() {
+  const server = http.createServer(app);
+
+  // Gemini 3.8 Live API WebSocket integration
+  const wss = new WebSocketServer({ server, path: '/api/live' });
+
+  wss.on('connection', async (clientWs: WebSocket) => {
+    console.log('[Gemini 3.8 Live] Client connected to live voice stream');
+    let session: any = null;
+    let isActive = true;
+
+    try {
+      const ai = getGenAI();
+      session = await ai.live.connect({
+        model: 'gemini-3.8-live',
+        config: {
+          responseModalities: [Modality.AUDIO],
+          speechConfig: {
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
+          },
+          systemInstruction: SYSTEM_INSTRUCTION,
+        },
+        callbacks: {
+          onmessage: (message: LiveServerMessage) => {
+            if (!isActive) return;
+            try {
+              const parts = message.serverContent?.modelTurn?.parts || [];
+              for (const part of parts) {
+                if (part.inlineData?.data) {
+                  clientWs.send(JSON.stringify({ audio: part.inlineData.data }));
+                }
+                if (part.text) {
+                  clientWs.send(JSON.stringify({ text: part.text }));
+                }
+              }
+              if (message.serverContent?.interrupted) {
+                clientWs.send(JSON.stringify({ interrupted: true }));
+              }
+            } catch (err) {
+              console.warn('[Gemini 3.8 Live] Error sending message to client:', err);
+            }
+          },
+          onclose: () => {
+            if (isActive) {
+              try { clientWs.send(JSON.stringify({ status: 'closed' })); } catch (_) {}
+            }
+          },
+          onerror: (err) => {
+            console.error('[Gemini 3.8 Live] Live session error:', err);
+            if (isActive) {
+              try { clientWs.send(JSON.stringify({ error: err?.message || 'Live error' })); } catch (_) {}
+            }
+          },
+        },
+      });
+
+      clientWs.send(JSON.stringify({ status: 'ready', model: 'gemini-3.8-live' }));
+    } catch (err: any) {
+      console.error('[Gemini 3.8 Live] Initialization error:', err);
+      try {
+        clientWs.send(JSON.stringify({ error: err.message || 'Failed to start Gemini Live' }));
+      } catch (_) {}
+      return;
+    }
+
+    clientWs.on('message', (rawData) => {
+      try {
+        const data = JSON.parse(rawData.toString());
+        if (data.audio && session) {
+          session.sendRealtimeInput({
+            audio: { data: data.audio, mimeType: 'audio/pcm;rate=16000' },
+          });
+        }
+        if (data.text && session) {
+          session.send({
+            clientContent: {
+              turns: [{ role: 'user', parts: [{ text: data.text }] }],
+              turnComplete: true,
+            },
+          });
+        }
+      } catch (parseErr) {
+        console.warn('[Gemini 3.8 Live] Client parse error:', parseErr);
+      }
+    });
+
+    clientWs.on('close', () => {
+      console.log('[Gemini 3.8 Live] Client disconnected');
+      isActive = false;
+      if (session) {
+        try { session.close(); } catch (_) {}
+      }
+    });
+  });
+
   if (process.env.NODE_ENV === 'production') {
     app.use(express.static(path.resolve(__dirname, 'dist')));
     app.get('*', (_req, res) => {
@@ -633,8 +734,8 @@ async function startServer() {
     app.use(vite.middlewares);
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`REGISTREE server active on http://0.0.0.0:${PORT}`);
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`REGISTREE server active with Gemini 3.8 Live on http://0.0.0.0:${PORT}`);
   });
 }
 
